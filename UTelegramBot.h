@@ -52,7 +52,7 @@ public:
 
     // set function which will be executed then this command sends
 	// first argument is Bot itself, and chatId is the id of chat where command was sent
-    void setCommand(std::string command, void (*func)(Bot&, const std::string));
+    void setCommand(std::string command, void (*func)(Bot&, const std::string&));
 
     void deleteCommand(std::string command);
 
@@ -65,7 +65,7 @@ private:
     const std::string chatIdString = "?chat_id=";
     std::string m_api;
     std::string m_url;
-	std::unordered_map<std::string, void (*)(Bot&, const std::string)> m_commands;
+	std::unordered_map<std::string, void (*)(Bot&, const std::string&)> m_commands;
 
     std::thread m_loop;
 };

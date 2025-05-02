@@ -104,7 +104,7 @@ json Bot::getUpdates() {
 	return updates;
 }
 
-void Bot::setCommand(std::string command, void(*func)(Bot&, const std::string)) {
+void Bot::setCommand(std::string command, void(*func)(Bot&, const std::string&)) {
     m_commands[command] = func;
 }
 
