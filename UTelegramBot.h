@@ -53,8 +53,10 @@ public:
     // set function which will be executed then this command sends
 	// first argument is Bot itself, and chatId is the id of chat where command was sent
     void setCommand(const std::string& command, void (*func)(Bot&, const std::string&));
+    void setReplyButton(const std::string& replyButton, void (*func)(Bot&, const std::string&));
 
     void deleteCommand(const std::string& command);
+    void deleteReplyButton(const std::string& replyButton);
 
     void startLoop();
     void detachLoop();
@@ -66,6 +68,7 @@ private:
     std::string m_api;
     std::string m_url;
 	std::unordered_map<std::string, void (*)(Bot&, const std::string&)> m_commands;
+    std::unordered_map<std::string, void (*)(Bot&, const std::string&)> m_replyButtons;
 
     std::thread m_loop;
 };

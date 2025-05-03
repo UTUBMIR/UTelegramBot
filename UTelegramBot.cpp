@@ -108,8 +108,16 @@ void Bot::setCommand(const std::string& command, void(*func)(Bot&, const std::st
     m_commands[command] = func;
 }
 
+void Bot::setReplyButton(const std::string& replyButton, void(*func)(Bot&, const std::string&)) {
+    m_replyButtons[replyButton] = func;
+}
+
 void Bot::deleteCommand(const std::string& command) {
     m_commands.erase(command);
+}
+
+void Bot::deleteReplyButton(const std::string& replyButton) {
+	m_replyButtons.erase(replyButton);
 }
 
 void Bot::startLoop() {
@@ -123,6 +131,14 @@ void Bot::startLoop() {
                             std::string command = update["message"]["text"];
                             if (m_commands.find(command) != m_commands.end()) {
                                 m_commands[command](*this, to_string(update["message"]["chat"]["id"]));
+                            }
+                        }
+                    }
+                    if (update.contains("callback_query") && update["callback_query"].is_object()) {
+                        if (update["callback_query"].contains("data") && update["callback_query"]["data"].is_string()) {
+                            std::string callbackData = update["callback_query"]["data"];
+                            if (m_replyButtons.find(callbackData) != m_replyButtons.end()) {
+                                m_replyButtons[callbackData](*this, to_string(update["callback_query"]["message"]["chat"]["id"]));
                             }
                         }
                     }
