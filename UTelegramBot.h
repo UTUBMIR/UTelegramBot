@@ -31,7 +31,7 @@ public:
     static std::string URLDecode(const std::string& text);
     static std::string CreateInlineKeyboard(const std::vector<std::vector<std::string>>& buttonText);
 
-    Bot(std::string api): m_api(api), m_url("https://api.telegram.org/bot" + api + '/') {
+    Bot(const std::string& api): m_api(api), m_url("https://api.telegram.org/bot" + api + '/') {
 		if (hasUpdates()) {
 			json updates = json::parse(Send(BOT_SEND_GET_UPDATES));
 			if (updates["ok"] && !updates["result"].empty()) {
@@ -41,8 +41,8 @@ public:
     }
     Bot(): m_api("") {}
 
-    std::string Send(std::string method, std::string chatId = "", std::string text = "", std::string replyMarkup = "");
-    std::string SendTextMessage(std::string chatId, std::string text, std::string replyMarkup = "");
+    std::string Send(const std::string& method, const std::string& chatId = "", const std::string& text = "", const std::string& replyMarkup = "");
+    std::string SendTextMessage(const std::string& chatId, const std::string& text, const std::string& replyMarkup = "");
 
     // returns true if bot has received updates
     bool hasUpdates();
@@ -52,9 +52,9 @@ public:
 
     // set function which will be executed then this command sends
 	// first argument is Bot itself, and chatId is the id of chat where command was sent
-    void setCommand(std::string command, void (*func)(Bot&, const std::string&));
+    void setCommand(const std::string& command, void (*func)(Bot&, const std::string&));
 
-    void deleteCommand(std::string command);
+    void deleteCommand(const std::string& command);
 
     void startLoop();
     void detachLoop();
@@ -62,7 +62,7 @@ public:
 
 private:
     long long m_lastUpdateId = 0;
-    const std::string chatIdString = "?chat_id=";
+    const std::string m_chatIdString = "?chat_id=";
     std::string m_api;
     std::string m_url;
 	std::unordered_map<std::string, void (*)(Bot&, const std::string&)> m_commands;

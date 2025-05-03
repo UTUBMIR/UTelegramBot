@@ -60,8 +60,8 @@ std::string Bot::URLDecode(const std::string& text) {
     return decoded;
 }
 
-std::string Bot::Send(std::string method, std::string chatId, std::string text, std::string replyMarkup) {
-    std::string requestUrl = m_url + method + chatIdString + chatId;
+std::string Bot::Send(const std::string& method, const std::string& chatId, const std::string& text, const std::string& replyMarkup) {
+    std::string requestUrl = m_url + method + m_chatIdString + chatId;
     //std::cout << "Request URL: " << requestUrl << '\n';
     //std::cout << chatId;
 
@@ -77,7 +77,7 @@ std::string Bot::Send(std::string method, std::string chatId, std::string text, 
 }
 
 
-std::string Bot::SendTextMessage(std::string chatId, std::string text, std::string replyMarkup) {
+std::string Bot::SendTextMessage(const std::string& chatId, const std::string& text, const std::string& replyMarkup) {
     return Send(BOT_SEND_MESSAGE, chatId, text, replyMarkup);
 }
 
@@ -104,11 +104,11 @@ json Bot::getUpdates() {
 	return updates;
 }
 
-void Bot::setCommand(std::string command, void(*func)(Bot&, const std::string&)) {
+void Bot::setCommand(const std::string& command, void(*func)(Bot&, const std::string&)) {
     m_commands[command] = func;
 }
 
-void Bot::deleteCommand(std::string command) {
+void Bot::deleteCommand(const std::string& command) {
     m_commands.erase(command);
 }
 
