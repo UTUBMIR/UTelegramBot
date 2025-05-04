@@ -1,35 +1,41 @@
-#pragma once
+#ifndef UTELEGRAMBOT_H
+#define UTELEGRAMBOT_H
+
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 
-const String BOT_SEND_MESSAGE("sendMessage");
-const String BOT_SEND_GET_UPDATES("getUpdates?timeout=20");
+#define BUFFER_SIZE 2048  // для JSON-десеріалізації
 
 class Bot {
 public:
-    String httpGet(const String& url);
-    Bot(const String& token);
-    String send(const String& method, const String& chatId = "", const String& text = "", const String& replyMarkup = "");
-    String sendTextMessage(const String& chatId, const String& text, const String& replyMarkup = "");
+    Bot(const char* token);
+
+    char* sendTextMessage(const char* chatId, const char* text, const char* replyMarkup = nullptr);
+    void setCommand(const char* command, void (*func)(Bot&, const char*));
     void handleUpdates();
-    void setCommand(const String& command, void (*func)(Bot&, const String&));
 
 private:
-    String m_token;
-    String m_host = "api.telegram.org";
-    int m_port = 443;
-    String m_url;
+    char* send(const char* method, const char* chatId, const char* text, const char* replyMarkup = nullptr);
+    char* httpGet(const char* url);
+
+private:
     WiFiClientSecure m_client;
+
+    char m_token[64];
+    char m_url[128];
+    const char* m_host;
+    uint16_t m_port;
+    const char* m_chatIdString;
+
     unsigned long m_lastUpdateId = 0;
-    static const int BUFFER_SIZE = 4048;
 
     struct Command {
-        String command;
-        void (*callback)(Bot&, const String&);
+        const char* command;
+        void (*callback)(Bot&, const char*);
     };
 
     Command m_commands[10];
     int m_commandCount = 0;
-
-    const String m_chatIdString = "?chat_id=";
 };
+
+#endif
