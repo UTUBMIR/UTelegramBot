@@ -8,7 +8,7 @@ std::string Bot::HttpGet(const std::string& url) {
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L); // слідувати редиректам
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         CURLcode res = curl_easy_perform(curl);
         if (res != CURLE_OK) {
             response = "curl_easy_perform() failed: " + std::string(curl_easy_strerror(res));
@@ -51,7 +51,7 @@ std::string Bot::URLDecode(const std::string& text) {
             i += 2;
         }
         else if (text[i] == '+') {
-            decoded += ' ';  // деякі форми URL-кодування використовують '+' для пробілу
+            decoded += ' ';
         }
         else {
             decoded += text[i];
