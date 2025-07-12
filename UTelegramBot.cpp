@@ -1,5 +1,40 @@
 #include "UTelegramBot.h"
 
+std::string Bot::wstringToString(const std::wstring& wstr) {
+    if (wstr.empty()) return std::string();
+
+    int utf8_len = WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        wstr.c_str(),
+        -1,
+        nullptr,
+        0,
+        nullptr, nullptr);
+
+    std::string utf8str(utf8_len - 1, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &utf8str[0], utf8_len, nullptr, nullptr);
+
+    return utf8str;
+}
+
+std::wstring Bot::stringToWstring(const std::string& str) {
+    if (str.empty()) return std::wstring();
+
+    int wide_len = MultiByteToWideChar(
+        CP_UTF8,
+        0,
+        str.c_str(),
+        -1,
+        nullptr,
+        0);
+
+    std::wstring wstr(wide_len - 1, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, &wstr[0], wide_len);
+
+    return wstr;
+}
+
 std::string Bot::HttpGet(const std::string& url) {
     CURL* curl = curl_easy_init();
     std::string response;
@@ -8,7 +43,7 @@ std::string Bot::HttpGet(const std::string& url) {
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L); // слідувати редиректам
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         CURLcode res = curl_easy_perform(curl);
         if (res != CURLE_OK) {
             response = "curl_easy_perform() failed: " + std::string(curl_easy_strerror(res));
@@ -51,7 +86,7 @@ std::string Bot::URLDecode(const std::string& text) {
             i += 2;
         }
         else if (text[i] == '+') {
-            decoded += ' ';  // деякі форми URL-кодування використовують '+' для пробілу
+            decoded += ' ';
         }
         else {
             decoded += text[i];
@@ -60,20 +95,25 @@ std::string Bot::URLDecode(const std::string& text) {
     return decoded;
 }
 
-std::string Bot::Send(const std::string& method, const std::string& chatId, const std::string& text, const std::string& replyMarkup) {
-    std::string requestUrl = m_url + method + m_chatIdString + chatId;
-    //std::cout << "Request URL: " << requestUrl << '\n';
-    //std::cout << chatId;
+std::string Bot::SendRaw(const std::string& method, const std::string& chatId, const std::string& addition) {
+    std::string requestUrl = m_url + method + m_chatIdString + chatId + addition;
 
+    return URLDecode(HttpGet(requestUrl));
+}
+
+std::string Bot::Send(const std::string& method, const std::string& chatId, const std::string& text, const std::string& replyMarkup) {
+    std::string addition;
+    addition.reserve(12);
+    
     if (!text.empty()) {
-        requestUrl += "&text=" + URLEncode(text);
+        addition += "&text=" + URLEncode(text);
     }
 
     if (!replyMarkup.empty()) {
-        requestUrl += "&reply_markup=" + URLEncode(replyMarkup);
+        addition += "&reply_markup=" + URLEncode(replyMarkup);
     }
 
-    return URLDecode(HttpGet(requestUrl));
+    return SendRaw(method, chatId, addition);
 }
 
 
@@ -89,7 +129,14 @@ bool Bot::hasUpdates() {
         updates = json::parse(updatesRaw);
     }
     catch (...) {
-        std::cerr << "\aError JSON parsing\n";
+        curl_version_info_data* vinfo = curl_version_info(CURLVERSION_NOW);
+        std::cout << "Protocols supported:\n";
+        for (auto p = vinfo->protocols; *p; ++p) {
+            std::cout << " - " << *p << std::endl;
+        }
+
+        std::cerr << "Error JSON parsing\n";
+        std::cout << updatesRaw << "\n";
         return false;
     }
 
@@ -108,12 +155,20 @@ void Bot::setCommand(const std::string& command, void(*func)(Bot&, const std::st
     m_commands[command] = func;
 }
 
+void Bot::setTextHandler(void(*func)(Bot&, const std::string&, const std::string&)) {
+    m_textHandler = func;
+}
+
 void Bot::setReplyButton(const std::string& replyButton, void(*func)(Bot&, const std::string&)) {
     m_replyButtons[replyButton] = func;
 }
 
 void Bot::deleteCommand(const std::string& command) {
     m_commands.erase(command);
+}
+
+void Bot::deleteTextHandler(const std::string& command) {
+    m_textHandler = nullptr;
 }
 
 void Bot::deleteReplyButton(const std::string& replyButton) {
@@ -132,12 +187,17 @@ void Bot::startLoop() {
                             if (m_commands.find(command) != m_commands.end()) {
                                 m_commands[command](*this, to_string(update["message"]["chat"]["id"]));
                             }
+                            else {
+                                if (m_textHandler != nullptr)
+                                    m_textHandler(*this, command, to_string(update["message"]["chat"]["id"]));
+                            }
                         }
                     }
                     if (update.contains("callback_query") && update["callback_query"].is_object()) {
                         if (update["callback_query"].contains("data") && update["callback_query"]["data"].is_string()) {
                             std::string callbackData = update["callback_query"]["data"];
                             if (m_replyButtons.find(callbackData) != m_replyButtons.end()) {
+                                callback = callbackData;
                                 m_replyButtons[callbackData](*this, to_string(update["callback_query"]["message"]["chat"]["id"]));
                             }
                         }
@@ -157,14 +217,13 @@ void Bot::joinLoop() {
 	m_loop.join();
 }
 
-std::string Bot::CreateInlineKeyboard(const std::vector<std::vector<std::string>>& buttonText) {
+std::string Bot::CreateInlineKeyboard(const BOT_INLINE_BUTTONS& buttonText) {
     std::string inlineKeyboard = "{\"inline_keyboard\":[";
 
     for (size_t row = 0; row < buttonText.size(); ++row) {
         inlineKeyboard += "[";
         for (size_t col = 0; col < buttonText[row].size(); ++col) {
-            std::string buttonTextStr = buttonText[row][col];
-            inlineKeyboard += "{\"text\":\"" + buttonTextStr + "\",\"callback_data\":\"" + Bot::URLEncode(buttonTextStr) + "\"}";
+            inlineKeyboard += "{\"text\":\"" + buttonText[row][col][0] + "\",\"callback_data\":\"" + Bot::URLEncode(buttonText[row][col][1]) + "\"}";
 
             if (col < buttonText[row].size() - 1) {
                 inlineKeyboard += ",";
